@@ -421,7 +421,6 @@ public class MainActivity extends AppCompatActivity {
                 dialog.dismiss();
                 if(pictureImagePath != "") {
                     Crop.of(outputFileUri, outputFileUri).asSquare().start(MainActivity.this);
-                    Toast.makeText(getApplicationContext(), "hi", Toast.LENGTH_SHORT).show();
                 }
                 else{
                         File storageDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
