@@ -34,6 +34,6 @@ to add contacts.
 <img src="https://mittalhimanshu151.000webhostapp.com/Images/OCR/3.jpg" width="280" height="500" hspace="4"/>
 </p>
 
-<p>
+<p align="center">
 <img src="https://mittalhimanshu151.000webhostapp.com/Images/OCR/4.png" width="280" height="500" hspace="4"/>
 </p>
