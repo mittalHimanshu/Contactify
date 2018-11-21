@@ -3,6 +3,10 @@
 This app implements Optical Character Recognition using `Google Vision` and Speech Input
 to add contacts.
 
+## Apk Link
+
+<a href="https://drive.google.com/open?id=1zswcDrZG1Bku-7WY6tvMfGTF8yXKM6ai">Click Here to download the Apk</a>
+
 ## How to Use
 
 1. Optical Character Recognition
