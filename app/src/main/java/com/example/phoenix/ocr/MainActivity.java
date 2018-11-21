@@ -5,11 +5,13 @@ import android.content.ActivityNotFoundException;
 import android.content.ContentProviderOperation;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.OperationApplicationException;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Environment;
+import android.os.RemoteException;
 import android.provider.ContactsContract;
 import android.provider.MediaStore;
 import android.speech.RecognizerIntent;
@@ -20,12 +22,16 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.util.SparseArray;
+import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.Toast;
+
 import com.google.android.gms.vision.Frame;
 import com.google.android.gms.vision.text.Text;
 import com.google.android.gms.vision.text.TextBlock;
@@ -54,25 +60,37 @@ public class MainActivity extends AppCompatActivity {
     EditText nameText, phoneText, emailText;
     ImageView imageView;
     private String pictureImagePath;
-    Uri outputFileUri;
+    Uri outputFileUri, newOutputFileUri;
     private final int REQ_CODE_SPEECH_INPUT = 100;
     AlertDialog.Builder builder;
     List<String> nameLabel, phoneLabel, emailLabel;
     String name, email, phone;
+    String filePath;
     ConstraintLayout constraintLayout;
+    LayoutInflater inflater;
+    AlertDialog d;
     Bitmap profileBitmap;
+    AlertDialog.Builder chooseBuilder;
     int choice = 0;
+    View chooseView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        nameText = findViewById(R.id.nameText);
+        phoneText = findViewById(R.id.phoneText);
+        emailText = findViewById(R.id.emailText);
+        nameLabel = new ArrayList<>();
+        phoneLabel = new ArrayList<>();
+        emailLabel = new ArrayList<>();
+        builder = new AlertDialog.Builder(MainActivity.this);
         constraintLayout = findViewById(R.id.constraintLayout);
         imageView = findViewById(R.id.imageView);
         imageView.setImageResource(R.drawable.ic_center_focus_strong_black_24dp);
 
-        if(CheckingPermissionIsEnabledOrNot())
+        if (CheckingPermissionIsEnabledOrNot())
             drawableListeners();
 
         else
@@ -90,7 +108,7 @@ public class MainActivity extends AppCompatActivity {
         return FirstPermissionResult == PackageManager.PERMISSION_GRANTED &&
                 SecondPermissionResult == PackageManager.PERMISSION_GRANTED &&
                 ThirdPermissionResult == PackageManager.PERMISSION_GRANTED &&
-                ForthPermissionResult == PackageManager.PERMISSION_GRANTED ;
+                ForthPermissionResult == PackageManager.PERMISSION_GRANTED;
     }
 
     @Override
@@ -109,8 +127,7 @@ public class MainActivity extends AppCompatActivity {
                     if (CameraPermission && RecordAudioPermission && SendSMSPermission && GetAccountsPermission) {
 
                         Snackbar.make(constraintLayout, "Thanks for granting Permissions", Snackbar.LENGTH_SHORT).show();
-                    }
-                    else {
+                    } else {
                         Snackbar.make(constraintLayout, "Please grant all Permissions !!!", Snackbar.LENGTH_SHORT).show();
 
                     }
@@ -134,22 +151,14 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @SuppressLint("ClickableViewAccessibility")
-    public void drawableListeners(){
-
-        nameText = findViewById(R.id.nameText);
-        phoneText = findViewById(R.id.phoneText);
-        emailText = findViewById(R.id.emailText);
-        builder = new AlertDialog.Builder(MainActivity.this);
-        nameLabel = new ArrayList<>();
-        phoneLabel = new ArrayList<>();
-        emailLabel = new ArrayList<>();
+    public void drawableListeners() {
 
         nameText.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
                 final int DRAWABLE_RIGHT = 2;
-                if(event.getAction() == MotionEvent.ACTION_UP) {
-                    if(event.getRawX() >= (nameText.getRight() - nameText.getCompoundDrawables()[DRAWABLE_RIGHT].getBounds().width())) {
+                if (event.getAction() == MotionEvent.ACTION_UP) {
+                    if (event.getRawX() >= (nameText.getRight() - nameText.getCompoundDrawables()[DRAWABLE_RIGHT].getBounds().width())) {
                         choice = 1;
                         promptSpeechInput();
                         return true;
@@ -163,8 +172,8 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
                 final int DRAWABLE_RIGHT = 2;
-                if(event.getAction() == MotionEvent.ACTION_UP) {
-                    if(event.getRawX() >= (phoneText.getRight() - phoneText.getCompoundDrawables()[DRAWABLE_RIGHT].getBounds().width())) {
+                if (event.getAction() == MotionEvent.ACTION_UP) {
+                    if (event.getRawX() >= (phoneText.getRight() - phoneText.getCompoundDrawables()[DRAWABLE_RIGHT].getBounds().width())) {
                         choice = 2;
                         promptSpeechInput();
                         return true;
@@ -178,8 +187,8 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
                 final int DRAWABLE_RIGHT = 2;
-                if(event.getAction() == MotionEvent.ACTION_UP) {
-                    if(event.getRawX() >= (emailText.getRight() - emailText.getCompoundDrawables()[DRAWABLE_RIGHT].getBounds().width())) {
+                if (event.getAction() == MotionEvent.ACTION_UP) {
+                    if (event.getRawX() >= (emailText.getRight() - emailText.getCompoundDrawables()[DRAWABLE_RIGHT].getBounds().width())) {
                         choice = 3;
                         promptSpeechInput();
                         return true;
@@ -205,7 +214,7 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    public void add(String name, String mobile, String email, Bitmap mBitmap){
+    public void add(String name, String mobile, String email, Bitmap mBitmap) {
 
         ArrayList<ContentProviderOperation> ops = new ArrayList<>();
 
@@ -250,29 +259,25 @@ public class MainActivity extends AppCompatActivity {
         }
 
         ByteArrayOutputStream stream = new ByteArrayOutputStream();
-        if(mBitmap!=null){
+        if (mBitmap != null) {
 
-            mBitmap.compress(Bitmap.CompressFormat.PNG , 75, stream);
+            mBitmap.compress(Bitmap.CompressFormat.PNG, 75, stream);
             ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
                     .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
                     .withValue(ContactsContract.Data.IS_SUPER_PRIMARY, 1)
-                    .withValue(ContactsContract.Data.MIMETYPE,ContactsContract.CommonDataKinds.Photo.CONTENT_ITEM_TYPE)
-                    .withValue(ContactsContract.CommonDataKinds.Photo.PHOTO,stream.toByteArray())
+                    .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Photo.CONTENT_ITEM_TYPE)
+                    .withValue(ContactsContract.CommonDataKinds.Photo.PHOTO, stream.toByteArray())
                     .build());
 
             try {
                 stream.flush();
-            }catch (IOException e) {
-                e.printStackTrace();
-            }
+            } catch (Exception e) { }
         }
-
         try {
             getContentResolver().applyBatch(ContactsContract.AUTHORITY, ops);
             Snackbar.make(constraintLayout, name + " added", Snackbar.LENGTH_SHORT).show();
         } catch (Exception e) {
-            e.printStackTrace();
-            Snackbar.make(constraintLayout, e.getMessage(), Snackbar.LENGTH_SHORT).show();
+            Snackbar.make(constraintLayout, "Profile Image to large", Snackbar.LENGTH_SHORT).show();
         }
 
     }
@@ -280,10 +285,9 @@ public class MainActivity extends AppCompatActivity {
     public void addContact(View view) {
 
         String name = nameText.getText().toString();
-        if(name.equals("")){
+        if (name.equals("")) {
             Snackbar.make(constraintLayout, "Name is mandatory", Snackbar.LENGTH_SHORT).show();
-        }
-        else {
+        } else {
             String mobile = phoneText.getText().toString();
             String email = emailText.getText().toString();
             add(name, mobile, email, profileBitmap);
@@ -296,8 +300,17 @@ public class MainActivity extends AppCompatActivity {
 
             case CAMERA_REQUEST: {
 
-                File imgFile = new File(pictureImagePath);
-                if (imgFile.exists()) {
+                if (pictureImagePath == "") {
+                    Log.d("ffttrr", "hello");
+                    outputFileUri = data.getData();
+                    Bitmap myBitmap = null;
+                    try {
+                        myBitmap = MediaStore.Images.Media.getBitmap(getContentResolver(), outputFileUri);
+                    } catch (IOException e) {}
+                    imageView.setImageBitmap(myBitmap);
+                    performOcr(myBitmap);
+                } else {
+                    File imgFile = new File(pictureImagePath);
                     Bitmap myBitmap = BitmapFactory.decodeFile(imgFile.getAbsolutePath());
                     imageView.setImageBitmap(myBitmap);
                     performOcr(myBitmap);
@@ -313,16 +326,19 @@ public class MainActivity extends AppCompatActivity {
                     ArrayList<String> result = data
                             .getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
 
-                    switch(choice){
+                    switch (choice) {
 
                         case 1:
-                            nameText.setText(result.get(0)); break;
+                            nameText.setText(result.get(0));
+                            break;
 
                         case 2:
-                            phoneText.setText(result.get(0)); break;
+                            phoneText.setText(result.get(0));
+                            break;
 
                         case 3:
-                            emailText.setText(result.get(0)); break;
+                            emailText.setText(result.get(0));
+                            break;
 
                     }
 
@@ -332,16 +348,26 @@ public class MainActivity extends AppCompatActivity {
 
             case Crop.REQUEST_CROP: {
 
-                imageView.setImageURI(outputFileUri);
-                try {
-                    profileBitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), outputFileUri);
-                    nameText.setText(name);
-                    phoneText.setText(phone);
-                    emailText.setText(email);
+                if (pictureImagePath != "") {
+                    imageView.setImageURI(outputFileUri);
+                    try {
+                        profileBitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), outputFileUri);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
                     new File(pictureImagePath).delete();
-                } catch (IOException e) {
-                    e.printStackTrace();
                 }
+                else {
+                    imageView.setImageURI(newOutputFileUri);
+                    try {
+                        profileBitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), newOutputFileUri);
+                    } catch (IOException e) {
+                    }
+                    new File(filePath).delete();
+                }
+                nameText.setText(name);
+                phoneText.setText(phone);
+                emailText.setText(email);
                 break;
 
             }
@@ -357,8 +383,10 @@ public class MainActivity extends AppCompatActivity {
         for (int i = 0; i < items.size(); i++) {
             TextBlock item = (TextBlock) items.valueAt(i);
             for (Text line : item.getComponents()) {
+
+                String temp;
                 nameLabel.add(line.getValue());
-                String temp = line.getValue();
+                temp = line.getValue();
 
                 String pattern = "[A-Z a-z0-9+_.-]+@(.+)";
                 Pattern r = Pattern.compile(pattern);
@@ -381,7 +409,7 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    public void displayEmailBuilder(){
+    public void displayEmailBuilder() {
 
         builder.setTitle("Choose Email : ");
         ArrayAdapter<String> dataAdapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, emailLabel);
@@ -391,8 +419,19 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(DialogInterface dialog, int which) {
                 email = emailLabel.get(which);
                 dialog.dismiss();
-                Crop.of(outputFileUri, outputFileUri).asSquare().start(MainActivity.this);
-            }
+                if(pictureImagePath != "") {
+                    Crop.of(outputFileUri, outputFileUri).asSquare().start(MainActivity.this);
+                    Toast.makeText(getApplicationContext(), "hi", Toast.LENGTH_SHORT).show();
+                }
+                else{
+                        File storageDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
+                        filePath = storageDir.getAbsolutePath() + "/" + "temp.jpg";
+                        File f1 = new File(filePath);
+                        newOutputFileUri = Uri.fromFile(f1);
+                        Crop.of(outputFileUri, newOutputFileUri).asSquare().start(MainActivity.this);
+                    }
+
+                }
         });
 
         builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
@@ -405,7 +444,17 @@ public class MainActivity extends AppCompatActivity {
         builder.setPositiveButton("Next", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
-                Crop.of(outputFileUri, outputFileUri).asSquare().start(MainActivity.this);
+                if(pictureImagePath != "") {
+                    Crop.of(outputFileUri, outputFileUri).asSquare().start(MainActivity.this);
+                    Toast.makeText(getApplicationContext(), "hi", Toast.LENGTH_SHORT).show();
+                }
+                else{
+                    File storageDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
+                    filePath = storageDir.getAbsolutePath() + "/" + "temp.jpg";
+                    File f1 = new File(filePath);
+                    newOutputFileUri = Uri.fromFile(f1);
+                    Crop.of(outputFileUri, newOutputFileUri).asSquare().start(MainActivity.this);
+                }
             }
         });
 
@@ -414,7 +463,7 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    public void displayPhoneBuilder(){
+    public void displayPhoneBuilder() {
 
         builder.setTitle("Choose Mobile No : ");
         ArrayAdapter<String> dataAdapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, phoneLabel);
@@ -447,7 +496,10 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    public void displayNameBuilder(){
+    public void displayNameBuilder() {
+
+        if (d != null)
+            d.dismiss();
 
         builder.setTitle("Choose Name : ");
         ArrayAdapter<String> dataAdapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, nameLabel);
@@ -480,11 +532,16 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    public void findImage(View view) {
+    public void openGallery(View v) {
 
-        try{
-            nameLabel.clear(); phoneLabel.clear(); emailLabel.clear();
-        }catch(Exception e){}
+        pictureImagePath = "";
+        Intent i = new Intent(Intent.ACTION_PICK,android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+        startActivityForResult(i, CAMERA_REQUEST);
+
+    }
+
+    public void openCamera(View view) {
+
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
         String imageFileName = timeStamp + ".jpg";
         File storageDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
@@ -494,6 +551,30 @@ public class MainActivity extends AppCompatActivity {
         Intent cameraIntent = new Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
         cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, outputFileUri);
         startActivityForResult(cameraIntent, CAMERA_REQUEST);
+
+    }
+
+    public void displayChoices(View view) {
+
+
+            try {
+                nameLabel.clear();
+                phoneLabel.clear();
+                emailLabel.clear();
+            } catch (Exception e) {}
+            inflater = this.getLayoutInflater();
+            chooseBuilder = new AlertDialog.Builder(MainActivity.this);
+            chooseView = inflater.inflate(R.layout.dialog_box, null);
+            chooseBuilder.setView(chooseView);
+            chooseBuilder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    dialog.dismiss();
+                }
+            });
+
+            d = chooseBuilder.create();
+            d.show();
 
     }
 }
