@@ -7,6 +7,10 @@ to add contacts.
 
 <a href="https://drive.google.com/open?id=1zswcDrZG1Bku-7WY6tvMfGTF8yXKM6ai">Click Here to download the Apk</a>
 
+## Source Code
+
+<a href="https://github.com/mittalHimanshu/Contactify/blob/master/app/src/main/java/com/example/phoenix/ocr/MainActivity.java">Click Here</a> for source code.
+
 ## How to Use
 
 1. Optical Character Recognition
