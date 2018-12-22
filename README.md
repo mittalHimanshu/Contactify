@@ -37,3 +37,12 @@ to add contacts.
 <p align="center">
 <img src="https://mittalhimanshu151.000webhostapp.com/Images/OCR/4.png" width="280" height="500" hspace="4"/>
 </p>
+
+---
+
+## License
+
+[![License](http://img.shields.io/:license-mit-blue.svg?style=flat-square)](http://badges.mit-license.org)
+
+- **[MIT license](https://github.com/mittalHimanshu/Contactify/blob/master/LICENSE)**
+- Copyright 2018 © <a href="https://github.com/mittalHimanshu" target="_blank">Himanshu Mittal</a>.
